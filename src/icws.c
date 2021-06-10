@@ -155,9 +155,11 @@ int main(int argc, char **argv)
         Request *request = parse(field.buf, readRet, connFd);
         if (request == NULL) // handled malformede request
         {
+            free(request);
             exit(1);
             //connection should be closed when encountering bad request.
         }
+
         printf("Http Method %s\n", request->http_method);
         printf("Http Version %s\n", request->http_version);
         printf("Http Uri %s\n", request->http_uri);

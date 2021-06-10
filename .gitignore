@@ -1,69 +1,95 @@
-########################################################################
-####################### Makefile Template ##############################
-########################################################################
+# Created by https://www.toptal.com/developers/gitignore/api/c,macos,vscode
+# Edit at https://www.toptal.com/developers/gitignore?templates=c,macos,vscode
 
-# Compiler settings - Can be customized.
-CC = gcc
-CXXFLAGS = -std=c11 -Wall
-LDFLAGS = 
+### C ###
+# Prerequisites
+*.d
 
-# Makefile settings - Can be customized.
-APPNAME = icsh
-EXT = .c
-SRCDIR = /Users/phang/desktop/Computer-Architecture/OS-Project1/IC-Shell
-OBJDIR = obj
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
 
-############## Do not change anything from here downwards! #############
-SRC = $(wildcard $(SRCDIR)/*$(EXT))
-OBJ = $(SRC:$(SRCDIR)/%$(EXT)=$(OBJDIR)/%.o)
-DEP = $(OBJ:$(OBJDIR)/%.o=%.d)
-# UNIX-based OS variables & settings
-RM = rm
-DELOBJ = $(OBJ)
-# Windows OS variables & settings
-DEL = del
-EXE = .exe
-WDELOBJ = $(SRC:$(SRCDIR)/%$(EXT)=$(OBJDIR)\\%.o)
+# Linker output
+*.ilk
+*.map
+*.exp
 
-########################################################################
-####################### Targets beginning here #########################
-########################################################################
+# Precompiled Headers
+*.gch
+*.pch
 
-all: $(APPNAME)
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
 
-# Builds the app
-$(APPNAME): $(OBJ)
-	$(CC) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+.so.
+*.dylib
 
-# Creates the dependecy rules
-%.d: $(SRCDIR)/%$(EXT)
-	@$(CPP) $(CFLAGS) $< -MM -MT $(@:%.d=$(OBJDIR)/%.o) >$@
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
 
-# Includes all .h files
--include $(DEP)
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
 
-# Building rule for .o files and its .c/.cpp in combination with all .h
-$(OBJDIR)/%.o: $(SRCDIR)/%$(EXT)
-	$(CC) $(CXXFLAGS) -o $@ -c $<
+# Kernel Module Compile Results
+.mod
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
 
-################### Cleaning rules for Unix-based OS ###################
-# Cleans complete project
-.PHONY: clean
-clean:
-	$(RM) $(DELOBJ) $(DEP) $(APPNAME)
+### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
 
-# Cleans only all files with the extension .d
-.PHONY: cleandep
-cleandep:
-	$(RM) $(DEP)
+# Icon must end with two \r
+Icon
 
-#################### Cleaning rules for Windows OS #####################
-# Cleans complete project
-.PHONY: cleanw
-cleanw:
-	$(DEL) $(WDELOBJ) $(DEP) $(APPNAME)$(EXE)
 
-# Cleans only all files with the extension .d
-.PHONY: cleandepw
-cleandepw:
-	$(DEL) $(DEP)
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+### vscode ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# End of https://www.toptal.com/developers/gitignore/api/c,macos,vscode
