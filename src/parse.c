@@ -58,12 +58,11 @@ Request *parse(char *buffer, int size, int socketFd)
 	//Valid End State
 	if (state == STATE_CRLFCRLF)
 	{
-
 		printf("Header Size %d\n", header_size);
 		Request *request = (Request *)malloc(sizeof(Request));
 		printf("Request count %d\n", request->header_count);
 		//TODO: You will need to handle resizing this in parser.y
-		request->headers = (Request_header *)malloc(sizeof(Request_header) * 6);
+		request->headers = (Request_header *)malloc(sizeof(Request_header) * 1);
 		set_parsing_options(buf, i, request);
 		if (yyparse() == SUCCESS)
 		{

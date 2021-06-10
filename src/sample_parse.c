@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "parse.h"
-
+#include "pcsa_net.h"
 int main(int argc, char **argv)
 {
   //Read from the file the sample

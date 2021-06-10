@@ -21,7 +21,7 @@ typedef struct
 	int header_count;
 } Request;
 
-Request* parse(char *buffer, int size,int socketFd);
+Request *parse(char *buffer, int size, int socketFd);
 
 // functions decalred in parser.y
 int yyparse();

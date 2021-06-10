@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "stdlib.h": "c",
+        "pcsa_net.h": "c",
+        "unistd.h": "c",
+        "parse.h": "c"
+    }
+}

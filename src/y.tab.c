@@ -189,8 +189,8 @@ union YYSTYPE
 {
 #line 50 "src/parser.y"
 
-	char str[8192];
-	int i;
+ char str[8192];
+ int i;
 
 #line 196 "y.tab.c"
 
@@ -509,18 +509,18 @@ union yyalloc
 #endif /* !YYCOPY_NEEDED */
 
 /* YYFINAL -- State number of the termination state.  */
-#define YYFINAL  2
+#define YYFINAL  11
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   92
+#define YYLAST   55
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  15
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  16
+#define YYNNTS  10
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  31
+#define YYNRULES  20
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  50
+#define YYNSTATES  34
 
 #define YYUNDEFTOK  2
 #define YYMAXUTOK   269
@@ -566,12 +566,11 @@ static const yytype_int8 yytranslate[] =
 
 #if YYDEBUG
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
-static const yytype_int16 yyrline[] =
+static const yytype_uint8 yyrline[] =
 {
        0,   113,   113,   114,   117,   123,   127,   156,   157,   160,
-     163,   171,   175,   187,   191,   195,   200,   207,   221,   222,
-     226,   228,   230,   232,   234,   236,   240,   247,   254,   261,
-     268,   275
+     163,   171,   175,   187,   191,   195,   200,   207,   222,   223,
+     225
 };
 #endif
 
@@ -584,8 +583,7 @@ static const char *const yytname[] =
   "t_digit", "t_dot", "t_token_char", "t_lws", "t_colon", "t_separators",
   "t_sp", "t_ws", "t_ctl", "$accept", "allowed_char_for_token", "token",
   "allowed_char_for_text", "text", "ows", "request_line", "request_header",
-  "request", "message", "one_header", "two_header", "three_header",
-  "four_header", "five_header", "six_header", YY_NULLPTR
+  "request_headers", "request", YY_NULLPTR
 };
 #endif
 
@@ -599,7 +597,7 @@ static const yytype_int16 yytoknum[] =
 };
 # endif
 
-#define YYPACT_NINF (-31)
+#define YYPACT_NINF (-21)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -613,11 +611,10 @@ static const yytype_int16 yytoknum[] =
      STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-     -31,    41,   -31,   -31,   -31,   -31,   -31,    53,    -1,   -31,
-     -31,   -31,   -31,   -31,   -31,   -31,    47,   -31,    38,    60,
-     -31,   -31,   -31,   -31,   -31,     7,   -31,   -31,    -2,   -31,
-      66,    47,    47,    17,   -31,    72,     1,   -31,    47,   -31,
-      78,   -31,    17,   -31,    84,    29,   -31,    13,   -31,   -31
+      24,   -21,   -21,   -21,   -21,    36,   -21,     1,    30,   -21,
+      43,   -21,   -21,   -21,   -21,   -21,   -21,    40,   -21,    21,
+     -21,    30,   -21,    30,   -21,    -6,     3,   -21,    42,   -21,
+      30,    42,    15,   -21
 };
 
   /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -625,25 +622,22 @@ static const yytype_int8 yypact[] =
      means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
-      18,     0,     1,     3,     4,     2,     5,     0,     0,    19,
-      20,    21,    22,    23,    24,    25,     0,     6,    13,     0,
-      10,     9,     8,     7,    11,    13,    14,    15,     0,    26,
-       0,     0,     0,    13,    27,     0,    13,    12,     0,    28,
-       0,    16,    13,    29,     0,     0,    30,     0,    17,    31
+       0,     3,     4,     2,     5,     0,    19,     0,     0,     6,
+       0,     1,    10,     9,     8,     7,    11,    13,    20,    13,
+      18,     0,    15,     0,    14,     0,    13,    12,    13,    16,
+       0,    13,     0,    17
 };
 
   /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -31,    -7,     9,   -30,   -10,   -15,   -31,   -18,   -31,   -31,
-     -31,   -31,   -31,   -31,   -31,   -31
+     -21,     0,    -3,   -20,   -13,   -17,   -21,   -21,   -21,   -21
 };
 
   /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,     6,    18,    24,    25,    32,     8,    19,     1,     9,
-      10,    11,    12,    13,    14,    15
+      -1,    15,     5,    16,    17,    23,     6,    20,    10,     7
 };
 
   /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -651,41 +645,32 @@ static const yytype_int8 yydefgoto[] =
      number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
-      17,    30,    37,    28,    41,     3,     4,     5,    33,    23,
-       7,    17,    35,    26,    27,    37,    49,    40,    38,    31,
-      27,    36,    44,     0,    23,    23,    47,    45,    42,    26,
-      27,    23,    48,     0,    20,     3,     4,     5,    23,    21,
-      22,     2,     0,     0,     3,     4,     5,     3,     4,     5,
-      26,    27,    20,     3,     4,     5,     0,    21,    22,     3,
-       4,     5,     0,    29,     0,    16,     3,     4,     5,    34,
-       0,     0,     3,     4,     5,    39,     0,     0,     3,     4,
-       5,    43,     0,     0,     3,     4,     5,    46,     0,     0,
-       3,     4,     5
+       4,    11,    25,    27,    28,     9,    29,    19,    26,     0,
+       4,    30,    27,     0,    32,    24,    22,    31,    33,     9,
+      12,     1,     2,     3,     0,    13,    14,     1,     2,     3,
+       1,     2,     3,    24,    22,    12,     1,     2,     3,     0,
+      13,    14,     1,     2,     3,     0,    18,     0,     8,     1,
+       2,     3,    21,    22,    24,    22
 };
 
 static const yytype_int8 yycheck[] =
 {
-       7,    19,    32,    18,     3,     6,     7,     8,    10,    16,
-       1,    18,    30,    12,    13,    45,     3,    35,    33,    12,
-      13,    31,    40,    -1,    31,    32,    44,    42,    38,    12,
-      13,    38,     3,    -1,     5,     6,     7,     8,    45,    10,
-      11,     0,    -1,    -1,     6,     7,     8,     6,     7,     8,
-      12,    13,     5,     6,     7,     8,    -1,    10,    11,     6,
-       7,     8,    -1,     3,    -1,    12,     6,     7,     8,     3,
-      -1,    -1,     6,     7,     8,     3,    -1,    -1,     6,     7,
-       8,     3,    -1,    -1,     6,     7,     8,     3,    -1,    -1,
-       6,     7,     8
+       0,     0,    19,    23,    10,     5,     3,    10,    21,    -1,
+      10,    28,    32,    -1,    31,    12,    13,    30,     3,    19,
+       5,     6,     7,     8,    -1,    10,    11,     6,     7,     8,
+       6,     7,     8,    12,    13,     5,     6,     7,     8,    -1,
+      10,    11,     6,     7,     8,    -1,     3,    -1,    12,     6,
+       7,     8,    12,    13,    12,    13
 };
 
   /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
      symbol of state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
-       0,    23,     0,     6,     7,     8,    16,    17,    21,    24,
-      25,    26,    27,    28,    29,    30,    12,    16,    17,    22,
-       5,    10,    11,    16,    18,    19,    12,    13,    20,     3,
-      22,    12,    20,    10,     3,    22,    19,    18,    20,     3,
-      22,     3,    19,     3,    22,    20,     3,    22,     3,     3
+       0,     6,     7,     8,    16,    17,    21,    24,    12,    16,
+      23,     0,     5,    10,    11,    16,    18,    19,     3,    17,
+      22,    12,    13,    20,    12,    20,    19,    18,    10,     3,
+      20,    19,    20,     3
 };
 
   /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
@@ -693,17 +678,15 @@ static const yytype_int8 yyr1[] =
 {
        0,    15,    16,    16,    16,    17,    17,    18,    18,    18,
       18,    19,    19,    20,    20,    20,    21,    22,    23,    23,
-      24,    24,    24,    24,    24,    24,    25,    26,    27,    28,
-      29,    30
+      24
 };
 
   /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
 static const yytype_int8 yyr2[] =
 {
        0,     2,     1,     1,     1,     1,     2,     1,     1,     1,
-       1,     1,     3,     0,     1,     1,     6,     7,     0,     2,
-       1,     1,     1,     1,     1,     1,     3,     4,     5,     6,
-       7,     8
+       1,     1,     3,     0,     1,     1,     6,     7,     2,     0,
+       3
 };
 
 
@@ -1401,183 +1384,150 @@ yyreduce:
   case 3:
 #line 114 "src/parser.y"
         {
-	(yyval.i) = '0' + (yyvsp[0].i);
+ (yyval.i) = '0' + (yyvsp[0].i);
 }
-#line 1407 "y.tab.c"
+#line 1390 "y.tab.c"
     break;
 
   case 5:
 #line 123 "src/parser.y"
                        {
-	YPRINTF("token: Matched rule 1.\n");
-	snprintf((yyval.str), 8192, "%c", (yyvsp[0].i));
+ YPRINTF("token: Matched rule 1.\n");
+ snprintf((yyval.str), 8192, "%c", (yyvsp[0].i));
 }
-#line 1416 "y.tab.c"
+#line 1399 "y.tab.c"
     break;
 
   case 6:
 #line 127 "src/parser.y"
                              {
-	YPRINTF("token: Matched rule 2.\n");
-	memcpy((yyval.str), (yyvsp[-1].str), strlen((yyvsp[-1].str)));
-	(yyval.str)[strlen((yyvsp[-1].str))] = (yyvsp[0].i);
-	(yyval.str)[strlen((yyvsp[-1].str)) + 1] = 0;
+ YPRINTF("token: Matched rule 2.\n");
+ memcpy((yyval.str), (yyvsp[-1].str), strlen((yyvsp[-1].str)));
+ (yyval.str)[strlen((yyvsp[-1].str))] = (yyvsp[0].i);
+ (yyval.str)[strlen((yyvsp[-1].str)) + 1] = 0;
     // snprintf($$, 8192, "%s%c", $1, $2);
 }
-#line 1428 "y.tab.c"
+#line 1411 "y.tab.c"
     break;
 
   case 8:
 #line 157 "src/parser.y"
              {
-	(yyval.i) = (yyvsp[0].i);
+ (yyval.i) = (yyvsp[0].i);
 }
-#line 1436 "y.tab.c"
+#line 1419 "y.tab.c"
     break;
 
   case 9:
 #line 160 "src/parser.y"
         {
-	(yyval.i) = (yyvsp[0].i);
+ (yyval.i) = (yyvsp[0].i);
 }
-#line 1444 "y.tab.c"
+#line 1427 "y.tab.c"
     break;
 
   case 10:
 #line 163 "src/parser.y"
         {
-	(yyval.i) = (yyvsp[0].i);
+ (yyval.i) = (yyvsp[0].i);
 }
-#line 1452 "y.tab.c"
+#line 1435 "y.tab.c"
     break;
 
   case 11:
 #line 171 "src/parser.y"
                             {
-	YPRINTF("text: Matched rule 1.\n");
-	snprintf((yyval.str), 8192, "%c", (yyvsp[0].i));
+ YPRINTF("text: Matched rule 1.\n");
+ snprintf((yyval.str), 8192, "%c", (yyvsp[0].i));
 }
-#line 1461 "y.tab.c"
+#line 1444 "y.tab.c"
     break;
 
   case 12:
 #line 175 "src/parser.y"
                                {
-	YPRINTF("text: Matched rule 2.\n");
-	memcpy((yyval.str), (yyvsp[-2].str), strlen((yyvsp[-2].str)));
-	memcpy((yyval.str) + strlen((yyvsp[-2].str)), (yyvsp[-1].str), strlen((yyvsp[-1].str)));
-	(yyval.str)[strlen((yyvsp[-2].str)) + strlen((yyvsp[-1].str))] = (yyvsp[0].i);
-	(yyval.str)[strlen((yyvsp[-2].str)) + strlen((yyvsp[-1].str)) + 1] = 0;
-	// snprintf($$, 8192, "%s%s%c", $1, $2, $3);
+ YPRINTF("text: Matched rule 2.\n");
+ memcpy((yyval.str), (yyvsp[-2].str), strlen((yyvsp[-2].str)));
+ memcpy((yyval.str) + strlen((yyvsp[-2].str)), (yyvsp[-1].str), strlen((yyvsp[-1].str)));
+ (yyval.str)[strlen((yyvsp[-2].str)) + strlen((yyvsp[-1].str))] = (yyvsp[0].i);
+ (yyval.str)[strlen((yyvsp[-2].str)) + strlen((yyvsp[-1].str)) + 1] = 0;
+ // snprintf($$, 8192, "%s%s%c", $1, $2, $3);
 }
-#line 1474 "y.tab.c"
+#line 1457 "y.tab.c"
     break;
 
   case 13:
 #line 187 "src/parser.y"
      {
-	YPRINTF("OWS: Matched rule 1\n");
-	(yyval.str)[0]=0;
+ YPRINTF("OWS: Matched rule 1\n");
+ (yyval.str)[0]=0;
 }
-#line 1483 "y.tab.c"
+#line 1466 "y.tab.c"
     break;
 
   case 14:
 #line 191 "src/parser.y"
      {
-	YPRINTF("OWS: Matched rule 2\n");
-	snprintf((yyval.str), 8192, "%c", (yyvsp[0].i));
+ YPRINTF("OWS: Matched rule 2\n");
+ snprintf((yyval.str), 8192, "%c", (yyvsp[0].i));
 }
-#line 1492 "y.tab.c"
+#line 1475 "y.tab.c"
     break;
 
   case 15:
 #line 195 "src/parser.y"
      {
-	YPRINTF("OWS: Matched rule 3\n");
-	snprintf((yyval.str), 8192, "%s", (yyvsp[0].str));
+ YPRINTF("OWS: Matched rule 3\n");
+ snprintf((yyval.str), 8192, "%s", (yyvsp[0].str));
 }
-#line 1501 "y.tab.c"
+#line 1484 "y.tab.c"
     break;
 
   case 16:
 #line 200 "src/parser.y"
                                                {
-	YPRINTF("request_Line:\n%s\n%s\n%s\n",(yyvsp[-5].str), (yyvsp[-3].str),(yyvsp[-1].str));
+ YPRINTF("request_Line:\n%s\n%s\n%s\n",(yyvsp[-5].str), (yyvsp[-3].str),(yyvsp[-1].str));
     strcpy(parsing_request->http_method, (yyvsp[-5].str));
-	strcpy(parsing_request->http_uri, (yyvsp[-3].str));
-	strcpy(parsing_request->http_version, (yyvsp[-1].str));
+ strcpy(parsing_request->http_uri, (yyvsp[-3].str));
+ strcpy(parsing_request->http_version, (yyvsp[-1].str));
 }
-#line 1512 "y.tab.c"
+#line 1495 "y.tab.c"
     break;
 
   case 17:
 #line 207 "src/parser.y"
                                                       {
-	YPRINTF("request_Header:\n%s\n%s\n",(yyvsp[-6].str),(yyvsp[-2].str));
-    strcpy(parsing_request->headers[parsing_request->header_count].header_name, (yyvsp[-6].str));
-	strcpy(parsing_request->headers[parsing_request->header_count].header_value, (yyvsp[-2].str));
-	parsing_request->header_count++;
+ YPRINTF("request_Header:\n%s\n%s\n",(yyvsp[-6].str),(yyvsp[-2].str));
+  parsing_request->headers = realloc(parsing_request->headers, sizeof(Request_header)*(parsing_request->header_count + 1));
+  strcpy(parsing_request->headers[parsing_request->header_count].header_name, (yyvsp[-6].str));
+ strcpy(parsing_request->headers[parsing_request->header_count].header_value, (yyvsp[-2].str));
+ parsing_request->header_count++;
 }
-#line 1523 "y.tab.c"
+#line 1507 "y.tab.c"
     break;
 
-  case 26:
-#line 241 "src/parser.y"
-  {
-    YPRINTF("parsing_request: Matched Success.\n");
-    return SUCCESS;
-  }
-#line 1532 "y.tab.c"
+  case 18:
+#line 222 "src/parser.y"
+                                                {}
+#line 1513 "y.tab.c"
     break;
 
-  case 27:
-#line 248 "src/parser.y"
-  {
-    YPRINTF("parsing_request: Matched Success.\n");
-    return SUCCESS;
-  }
-#line 1541 "y.tab.c"
+  case 19:
+#line 223 "src/parser.y"
+            {}
+#line 1519 "y.tab.c"
     break;
 
-  case 28:
-#line 255 "src/parser.y"
-  {
-    YPRINTF("parsing_request: Matched Success.\n");
-    return SUCCESS;
-  }
-#line 1550 "y.tab.c"
-    break;
-
-  case 29:
-#line 262 "src/parser.y"
-  {
-   YPRINTF("parsing_request: Matched Success.\n");
-    return SUCCESS;
-  }
-#line 1559 "y.tab.c"
-    break;
-
-  case 30:
-#line 269 "src/parser.y"
-  {
-   YPRINTF("parsing_request: Matched Success.\n");
-   return SUCCESS;
-  }
-#line 1568 "y.tab.c"
-    break;
-
-  case 31:
-#line 276 "src/parser.y"
-  {
-   YPRINTF("parsing_request: Matched Success.\n");
-   return SUCCESS;
-  }
-#line 1577 "y.tab.c"
+  case 20:
+#line 225 "src/parser.y"
+                                             {
+	YPRINTF("parsing_request: Matched Success.\n");
+	return SUCCESS; }
+#line 1527 "y.tab.c"
     break;
 
 
-#line 1581 "y.tab.c"
+#line 1531 "y.tab.c"
 
       default: break;
     }
@@ -1809,7 +1759,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 281 "src/parser.y"
+#line 230 "src/parser.y"
 
 
 /* C code */
@@ -1817,8 +1767,8 @@ yyreturn:
 void set_parsing_options(char *buf, size_t siz, Request *request)
 {
     parsing_buf = buf;
-	parsing_offset = 0;
-	parsing_buf_siz = siz;
+ parsing_offset = 0;
+ parsing_buf_siz = siz;
     parsing_request = request;
 }
 
