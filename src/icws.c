@@ -29,7 +29,71 @@ typedef struct
 // } field;
 
 typedef struct sockaddr SA;
+char *getExtension(const char *filename)
+{
+    char *dot = strrchr(filename, '.');
+    if (!dot || dot == filename)
+        return "";
+    return dot + 1;
+}
+void getMime(char *extension, char *result)
+{
+    if (!strcmp(extension, "html"))
+    {
+        strcpy(result, "text/html");
+    }
+    else if (!strcmp(extension, "js"))
+    {
+        strcpy(result, "text/javascript");
+    }
+    else if (!strcmp(extension, "png"))
+    {
+        strcpy(result, "image/png");
+    }
+    else if (!strcmp(extension, "jpeg"))
+    {
+        strcpy(result, "image/jpeg");
+    }
+    else if (!strcmp(extension, "jpg"))
+    {
+        strcpy(result, "image/jpg");
+    }
+    else if (!strcmp(extension, "css"))
+    {
+        strcpy(result, "text/css");
+    }
+    else if (!strcmp(extension, "gif"))
+    {
+        strcpy(result, "image/gif");
+    }
+    else if (!strcmp(extension, "txt"))
+    {
+        strcpy(result, "text/plain");
+    }
+    else
+    { // none of above mime
+        result = NULL;
+    }
+}
+void responseHEAD(int connFd, Request *request, Field *field, char *newPath)
+{
+    char *mime = (char *)malloc(sizeof(char) * 100);
+    char *extension = getExtension(request->http_uri);
+    // int isFileExist = access(newPath, F_OK);
+    getMime(extension, mime);
+    printf("mimie is %s\n", mime);
+    respond_all_head(connFd, newPath, mime);
+}
 
+void responseGET(int connFd, Request *request, Field *field, char *newPath)
+{
+    char *mime = (char *)malloc(sizeof(char) * 100);
+    char *extension = getExtension(request->http_uri);
+    // int isFileExist = access(newPath, F_OK);
+    getMime(extension, mime);
+    printf("mimie is %s\n", mime);
+    respond_all(connFd, newPath, mime);
+}
 void write_logic(int connFd, int outputFd)
 {
     ssize_t bytesRead;
@@ -53,6 +117,34 @@ void write_logic(int connFd, int outputFd)
     }
     printf("DEBUG: Connection closed\n");
 }
+void respond_all_head(int connFd, char *uri, char *mime)
+{
+    char buf[MAXBUF];
+    int uriFd = open(uri, O_RDONLY);
+    char *msg = "404 Not Found";
+    if (uriFd < 0)
+    {
+        sprintf(buf,
+                "HTTP/1.1 404 Not Found\r\n"
+                "Server: Micro\r\n"
+                "Connection: close\r\n\r\n");
+        write_all(connFd, buf, strlen(buf));
+        write_all(connFd, msg, strlen(msg));
+        return;
+    }
+    // struct stat fstatbuf;
+    // fstat(uriFd, &fstatbuf);
+    // sprintf(buf,
+    //         "HTTP/1.1 200 OK\r\n"
+    //         "Server: Micro\r\n"
+    //         "Connection: close\r\n"
+    //         "Content-length: %lu\r\n"
+    //         "Content-type: %s\r\n\r\n",
+    //         fstatbuf.st_size, mime);
+    // write_all(connFd, buf, strlen(buf));
+    write_logic(uriFd, connFd);
+}
+
 void respond_all(int connFd, char *uri, char *mime)
 {
     char buf[MAXBUF];
@@ -118,30 +210,21 @@ void serve_http(int connFd, char *rootFolder, Field *field)
 
     char buf[MAXBUF];
 
-    // if (!read_line(connFd, buf, MAXBUF))
-    //     return; /* Quit if we can't read the first line */
-    /* [METHOD] [URI] [HTTPVER] */
-    // char method[MAXBUF], uri[MAXBUF], httpVer[MAXBUF];
     sscanf(buf, "%s %s %s", request->http_method, request->http_uri, request->http_version);
 
     char newPath[80];
-    if (strcasecmp(request->http_method, "GET") == 0)
+    if (request->http_uri[0] == '/')
     {
-        if (request->http_uri[0] == '/')
+        sprintf(newPath, "%s%s", field->rootFolder, request->http_uri);
+        if (!strcasecmp(request->http_method, "GET"))
         {
-            sprintf(newPath, "%s%s", field->rootFolder, request->http_uri);
-            if (strstr(request->http_uri, "html") != NULL)
-            {
-                respond_all(connFd, newPath, "text/html");
-            }
-            else if (strstr(request->http_uri, "jpg") != NULL || strstr(request->http_uri, "jpeg") != NULL)
-            {
-                respond_all(connFd, newPath, "image/jpeg");
-            }
-            else
-            {
-                respond_all(connFd, newPath, NULL);
-            }
+
+            responseGET(connFd, request, field, newPath);
+        }
+        else if (!strcasecmp(request->http_method, "HEAD"))
+        {
+
+            responseHEAD(connFd, request, field, newPath);
         }
     }
     else
