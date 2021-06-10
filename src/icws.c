@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <time.h>
 #include "parse.h"
 #include "pcsa_net.h"
 #define MAXBUF 1024
@@ -20,15 +21,15 @@ typedef struct
     char *rootFolder;
     char buf[MAXBUF];
 } Field;
-// struct field
-
-// {
-//     char *port;
-//     char *rootFolder;
-//     char buf[MAXBUF];
-// } field;
 
 typedef struct sockaddr SA;
+char *gettDateTime(void)
+{
+    time_t t = time(NULL);
+    struct tm *tm = localtime(&t);
+    return asctime(tm);
+}
+
 char *getExtension(const char *filename)
 {
     char *dot = strrchr(filename, '.');
@@ -36,6 +37,17 @@ char *getExtension(const char *filename)
         return "";
     return dot + 1;
 }
+int checkHTTPversion(Request *request)
+{
+    char *reqHTTPVersion = request->http_version;
+    char *httpVersion = "HTTP/1.1";
+    if (!strcmp(reqHTTPVersion, httpVersion))
+    {
+        return 1;
+    }
+    return 0;
+}
+
 void getMime(char *extension, char *result)
 {
     if (!strcmp(extension, "html"))
@@ -72,27 +84,35 @@ void getMime(char *extension, char *result)
     }
     else
     { // none of above mime
-        result = NULL;
+        strcpy(result, "none");
     }
 }
 void responseHEAD(int connFd, Request *request, Field *field, char *newPath)
 {
     char *mime = (char *)malloc(sizeof(char) * 100);
     char *extension = getExtension(request->http_uri);
-    // int isFileExist = access(newPath, F_OK);
     getMime(extension, mime);
-    printf("mimie is %s\n", mime);
+    if (!strcmp(mime, "none"))
+    {
+        respond_all_head(connFd, newPath, NULL);
+        return;
+    }
     respond_all_head(connFd, newPath, mime);
+    return;
 }
 
 void responseGET(int connFd, Request *request, Field *field, char *newPath)
 {
     char *mime = (char *)malloc(sizeof(char) * 100);
     char *extension = getExtension(request->http_uri);
-    // int isFileExist = access(newPath, F_OK);
     getMime(extension, mime);
-    printf("mimie is %s\n", mime);
+    if (!strcmp(mime, "none"))
+    {
+        respond_all(connFd, newPath, NULL);
+        return;
+    }
     respond_all(connFd, newPath, mime);
+    return;
 }
 void write_logic(int connFd, int outputFd)
 {
@@ -117,58 +137,101 @@ void write_logic(int connFd, int outputFd)
     }
     printf("DEBUG: Connection closed\n");
 }
+void response_404(int connFd, char *buffer)
+{
+    char *msg = "404 Not Found\n";
+    sprintf(buffer,
+            "HTTP/1.1 404 Not Found\r\n"
+            "Date: %s\r\n"
+            "Server: icws\r\n"
+            "Connection: close\r\n\r\n",
+            gettDateTime());
+    write_all(connFd, buffer, strlen(buffer));
+    write_all(connFd, msg, strlen(msg));
+}
+void response_400(int connFd, char *buffer)
+{
+    char *msg = "400 Bad request\n";
+    sprintf(buffer,
+            "HTTP/1.1 400 Bad request\r\n"
+            "Date: %s\r\n"
+            "Server: icws\r\n"
+            "Connection: close\r\n\r\n",
+            gettDateTime());
+    write_all(connFd, buffer, strlen(buffer));
+    write_all(connFd, msg, strlen(msg));
+}
+void response_501(int connFd, char *buffer)
+{
+    char *msg = "501\n";
+    sprintf(buffer,
+            "HTTP/1.1 501 HTTP Method Not Unimplemented\r\n"
+            "Date: %s\r\n"
+            "Server: icws\r\n"
+            "Connection: close\r\n\r\n",
+            gettDateTime());
+    write_all(connFd, buffer, strlen(buffer));
+    write_all(connFd, msg, strlen(msg));
+}
+
+void response_505(int connFd, char *buffer)
+{
+    char *msg = "505\n";
+    sprintf(buffer,
+            "HTTP/1.1 505 HTTP Version Not Supported\r\n"
+            "Date: %s\r\n"
+            "Server: icws\r\n"
+            "Connection: close\r\n\r\n",
+            gettDateTime());
+    write_all(connFd, buffer, strlen(buffer));
+    write_all(connFd, msg, strlen(msg));
+}
 void respond_all_head(int connFd, char *uri, char *mime)
 {
     char buf[MAXBUF];
     int uriFd = open(uri, O_RDONLY);
-    char *msg = "404 Not Found";
-    if (uriFd < 0)
+    char *msg = "404 Not Found\n";
+    if (mime == NULL)
     {
-        sprintf(buf,
-                "HTTP/1.1 404 Not Found\r\n"
-                "Server: Micro\r\n"
-                "Connection: close\r\n\r\n");
-        write_all(connFd, buf, strlen(buf));
-        write_all(connFd, msg, strlen(msg));
+        response_404(connFd, buf);
         return;
     }
-    // struct stat fstatbuf;
-    // fstat(uriFd, &fstatbuf);
-    // sprintf(buf,
-    //         "HTTP/1.1 200 OK\r\n"
-    //         "Server: Micro\r\n"
-    //         "Connection: close\r\n"
-    //         "Content-length: %lu\r\n"
-    //         "Content-type: %s\r\n\r\n",
-    //         fstatbuf.st_size, mime);
-    // write_all(connFd, buf, strlen(buf));
-    write_logic(uriFd, connFd);
+    struct stat fstatbuf;
+    fstat(uriFd, &fstatbuf);
+    sprintf(buf,
+            "HTTP/1.1 200 ok\r\n"
+            "Date: %s\r\n"
+            "Server: icws\r\n"
+            "Connection: close\r\n"
+            "Content-type: %s\r\n"
+            "Content-length: %lu\r\n"
+            "Last-modification: %s\r\n\r\n",
+            gettDateTime(), mime, fstatbuf.st_size, ctime(&fstatbuf.st_mtime));
+    write_all(connFd, buf, strlen(buf));
+    return;
 }
 
 void respond_all(int connFd, char *uri, char *mime)
 {
     char buf[MAXBUF];
     int uriFd = open(uri, O_RDONLY);
-    char *msg = "404 Not Found";
-    if (uriFd < 0)
+    char *msg = "404 Not Found\n";
+    if (mime == NULL)
     {
-        sprintf(buf,
-                "HTTP/1.1 404 Not Found\r\n"
-                "Server: Micro\r\n"
-                "Connection: close\r\n\r\n");
-        write_all(connFd, buf, strlen(buf));
-        write_all(connFd, msg, strlen(msg));
+        response_404(connFd, buf);
         return;
     }
     struct stat fstatbuf;
     fstat(uriFd, &fstatbuf);
     sprintf(buf,
-            "HTTP/1.1 200 OK\r\n"
-            "Server: Micro\r\n"
+            "HTTP/1.1 200 ok\r\n"
+            "Date: %s\r\n"
+            "Server: icws\r\n"
             "Connection: close\r\n"
+            "Content-type: %s\r\n"
             "Content-length: %lu\r\n"
-            "Content-type: %s\r\n\r\n",
-            fstatbuf.st_size, mime);
+            "Last-modification: %s\r\n\r\n",
+            gettDateTime(), mime, fstatbuf.st_size, ctime(&fstatbuf.st_mtime));
     write_all(connFd, buf, strlen(buf));
     write_logic(uriFd, connFd);
 }
@@ -177,6 +240,7 @@ void serve_http(int connFd, char *rootFolder, Field *field)
 {
     int readRet;
     int sizeRet = 0;
+    char buf[MAXBUF];
     char readBuf[MAXBUF];
     while ((readRet = read_line(connFd, readBuf, MAXBUF)) > 0)
     {
@@ -184,7 +248,6 @@ void serve_http(int connFd, char *rootFolder, Field *field)
         strcat(field->buf, readBuf);
         if (!strcmp(readBuf, "\r\n"))
         {
-            printf("in");
             break;
         }
     }
@@ -200,25 +263,23 @@ void serve_http(int connFd, char *rootFolder, Field *field)
     Request *request = parse(field->buf, sizeRet, connFd);
     if (request == NULL) // handled malformede request
     {
-        free(field);
-        free(request);
-        exit(1);
+        response_400(connFd, buf);
+        return;
     }
     printf("Http Method %s\n", request->http_method);
     printf("Http Version %s\n", request->http_version);
     printf("Http Uri %s\n", request->http_uri);
-
-    char buf[MAXBUF];
-
-    sscanf(buf, "%s %s %s", request->http_method, request->http_uri, request->http_version);
-
+    if (!checkHTTPversion(request))
+    {
+        response_505(connFd, buf);
+        return;
+    }
     char newPath[80];
     if (request->http_uri[0] == '/')
     {
         sprintf(newPath, "%s%s", field->rootFolder, request->http_uri);
         if (!strcasecmp(request->http_method, "GET"))
         {
-
             responseGET(connFd, request, field, newPath);
         }
         else if (!strcasecmp(request->http_method, "HEAD"))
@@ -226,12 +287,17 @@ void serve_http(int connFd, char *rootFolder, Field *field)
 
             responseHEAD(connFd, request, field, newPath);
         }
+        else
+        {
+            response_501(connFd, buf);
+        }
     }
     else
     {
-        // respond_all(connFd, newPath, NULL);
         printf("LOG: Unknown request\n");
     }
+    free(request);
+    return;
 }
 int main(int argc, char **argv)
 {
@@ -277,6 +343,7 @@ int main(int argc, char **argv)
 
         serve_http(connFd, field->rootFolder, field);
         close(connFd);
+        free(field);
     }
     return 0;
 }
