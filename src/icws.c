@@ -13,12 +13,20 @@ static struct option long_options[] =
         {"port", required_argument, NULL, 'p'},
         {"root", required_argument, NULL, 'r'},
         {NULL, 0, NULL, 0}};
-struct field
+
+typedef struct
 {
     char *port;
     char *rootFolder;
     char buf[MAXBUF];
-} field;
+} Field;
+// struct field
+
+// {
+//     char *port;
+//     char *rootFolder;
+//     char buf[MAXBUF];
+// } field;
 
 typedef struct sockaddr SA;
 
@@ -73,26 +81,60 @@ void respond_all(int connFd, char *uri, char *mime)
     write_logic(uriFd, connFd);
 }
 
-void serve_http(int connFd, char *rootFolder)
+void serve_http(int connFd, char *rootFolder, Field *field)
 {
+    int readRet;
+    int sizeRet = 0;
+    char readBuf[MAXBUF];
+    while ((readRet = read_line(connFd, readBuf, MAXBUF)) > 0)
+    {
+        sizeRet += readRet;
+        strcat(field->buf, readBuf);
+        if (!strcmp(readBuf, "\r\n"))
+        {
+            printf("in");
+            break;
+        }
+    }
+    if (!readRet)
+    {
+        fprintf(stderr, "Failed to accept\n");
+        return;
+    }
+    for (int i = 0; i < sizeRet; i++)
+    {
+        fprintf(stderr, "%c", field->buf[i]);
+    }
+    Request *request = parse(field->buf, sizeRet, connFd);
+    if (request == NULL) // handled malformede request
+    {
+        free(field);
+        free(request);
+        exit(1);
+    }
+    printf("Http Method %s\n", request->http_method);
+    printf("Http Version %s\n", request->http_version);
+    printf("Http Uri %s\n", request->http_uri);
+
     char buf[MAXBUF];
-    if (!read_line(connFd, buf, MAXBUF))
-        return; /* Quit if we can't read the first line */
+
+    // if (!read_line(connFd, buf, MAXBUF))
+    //     return; /* Quit if we can't read the first line */
     /* [METHOD] [URI] [HTTPVER] */
-    char method[MAXBUF], uri[MAXBUF], httpVer[MAXBUF];
-    sscanf(buf, "%s %s %s", method, uri, httpVer);
+    // char method[MAXBUF], uri[MAXBUF], httpVer[MAXBUF];
+    sscanf(buf, "%s %s %s", request->http_method, request->http_uri, request->http_version);
 
     char newPath[80];
-    if (strcasecmp(method, "GET") == 0)
+    if (strcasecmp(request->http_method, "GET") == 0)
     {
-        if (uri[0] == '/')
+        if (request->http_uri[0] == '/')
         {
-            sprintf(newPath, "%s%s", rootFolder, uri);
-            if (strstr(uri, "html") != NULL)
+            sprintf(newPath, "%s%s", field->rootFolder, request->http_uri);
+            if (strstr(request->http_uri, "html") != NULL)
             {
                 respond_all(connFd, newPath, "text/html");
             }
-            else if (strstr(uri, "jpg") != NULL || strstr(uri, "jpeg") != NULL)
+            else if (strstr(request->http_uri, "jpg") != NULL || strstr(request->http_uri, "jpeg") != NULL)
             {
                 respond_all(connFd, newPath, "image/jpeg");
             }
@@ -111,24 +153,25 @@ void serve_http(int connFd, char *rootFolder)
 int main(int argc, char **argv)
 {
     int ch;
+    Field *field = (Field *)malloc(sizeof(Field));
     while ((ch = getopt_long(argc, argv, "p:r:", long_options, NULL)) != -1)
     {
         switch (ch)
         {
         case 'p':
-            field.port = optarg;
-            printf("option --port with value '%s'\n", field.port);
+            field->port = optarg;
+            printf("option --port with value '%s'\n", field->port);
             break;
 
         case 'r':
-            field.rootFolder = optarg;
-            printf("option --root with value '%s'\n", field.rootFolder);
+            field->rootFolder = optarg;
+            printf("option --root with value '%s'\n", field->rootFolder);
             break;
         default:
             exit(1);
         }
     }
-    int listenFd = open_listenfd(field.port);
+    int listenFd = open_listenfd(field->port);
     for (;;)
     {
         char buf[8192];
@@ -141,36 +184,15 @@ int main(int argc, char **argv)
             break;
             continue;
         }
-        // int readRet = read(connFd, field.buf, MAXBUF);
-        int readRet = read(connFd, &field.buf, MAXBUF);
-        if (readRet < 0)
-        {
-            fprintf(stderr, "error read %s\n");
-            exit(0);
-        }
-        for (int i = 0; i < readRet; i++)
-        {
-            fprintf(stderr, "%c", field.buf[i]);
-        }
-        Request *request = parse(field.buf, readRet, connFd);
-        if (request == NULL) // handled malformede request
-        {
-            free(request);
-            exit(1);
-            //connection should be closed when encountering bad request.
-        }
-
-        printf("Http Method %s\n", request->http_method);
-        printf("Http Version %s\n", request->http_version);
-        printf("Http Uri %s\n", request->http_uri);
         char hostBuf[MAXBUF], svcBuf[MAXBUF];
+
         if (getnameinfo((SA *)&clientAddr, clientLen,
                         hostBuf, MAXBUF, svcBuf, MAXBUF, 0) == 0)
             printf("Connection from %s:%s\n", hostBuf, svcBuf);
         else
             printf("Connection from ?UNKNOWN?\n");
 
-        serve_http(connFd, field.rootFolder);
+        serve_http(connFd, field->rootFolder, field);
         close(connFd);
     }
     return 0;
