@@ -3,6 +3,8 @@
         "stdlib.h": "c",
         "pcsa_net.h": "c",
         "unistd.h": "c",
-        "parse.h": "c"
+        "parse.h": "c",
+        "netdb.h": "c",
+        "string.h": "c"
     }
 }
