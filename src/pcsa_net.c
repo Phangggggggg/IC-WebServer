@@ -179,8 +179,8 @@ ssize_t rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen)
 {
     int n, rc;
     char c, *bufp = usrbuf;
-    printf("Reading on the connection %d\n", rp->rio_fd);
-    printf("Buffer contains %s\n", rp->rio_buf);
+    // printf("Reading on the connection %d\n", rp->rio_fd);
+    // printf("Buffer contains %s\n", rp->rio_buf);
     for (n = 1; n < maxlen; n++)
     {
         if ((rc = rio_read(rp, &c, 1)) == 1)

@@ -12,18 +12,18 @@
 #include <poll.h>
 
 #include "simple_work_queue.hpp"
-#define ACTIVE 0
-#define INACTIVE -1
+
 extern "C"
 {
 #include "pcsa_net.h"
 #include "parse.h"
 }
 using namespace std;
-#define MAXBUF 1024
+#define MAXBUF 8024
 
 pthread_t *thread_array;
 pthread_mutex_t jobs_mutex;
+pthread_mutex_t parse_mutex;
 pthread_cond_t condition_variable;
 deque<int> q;
 
@@ -44,7 +44,6 @@ typedef struct
     int timeout;
     int connFd;
     char buf[MAXBUF];
-    pthread_mutex_t add_mutex;
 } Field;
 
 typedef struct sockaddr SA;
@@ -131,14 +130,15 @@ void write_logic(int connFd, int outputFd)
             writeBuf += numWritten;
         }
     }
-    printf("DEBUG: Connection closed\n");
+    fprintf(stdout, "DEBUG: Connection closed\n");
 }
 void respond_all_head(int connFd, char *uri, char *mime)
 {
     char buf[MAXBUF];
     int uriFd = open(uri, O_RDONLY);
     char *msg = "404 Not Found\n";
-    if (mime == NULL)
+    fprintf(stdout, "uri is %d", uriFd);
+    if (mime == NULL || uriFd < 0)
     {
         response_404(connFd, buf);
         return;
@@ -152,7 +152,7 @@ void respond_all_head(int connFd, char *uri, char *mime)
             "Connection: close\r\n"
             "Content-type: %s\r\n"
             "Content-length: %lu\r\n"
-            "Last-modification: %s\r\n\r\n",
+            "Last-modification: %s\r\n",
             gettDateTime(), mime, fstatbuf.st_size, ctime(&fstatbuf.st_mtime));
     write_all(connFd, buf, strlen(buf));
     return;
@@ -162,8 +162,6 @@ void respond_all(int connFd, char *uri, char *mime)
 {
     char buf[MAXBUF];
     int uriFd = open(uri, O_RDONLY);
-    fprintf(stdout, "uriFd is %d\n", uriFd);
-    fprintf(stdout, "meme is %s\n", mime);
     char *msg = "404 Not Found\n";
     if (mime == NULL || uriFd < 0)
     {
@@ -179,7 +177,7 @@ void respond_all(int connFd, char *uri, char *mime)
             "Connection: close\r\n"
             "Content-type: %s\r\n"
             "Content-length: %lu\r\n"
-            "Last-modification: %s\r\n\r\n",
+            "Last-modification: %s\r\n",
             gettDateTime(), mime, fstatbuf.st_size, ctime(&fstatbuf.st_mtime));
     write_all(connFd, buf, strlen(buf));
     write_logic(uriFd, connFd);
@@ -258,6 +256,7 @@ void responseHEAD(int connFd, Request *request, Field *field, char *newPath)
 
 void responseGET(int connFd, Request *request, Field *field, char *newPath)
 {
+
     char *mime = (char *)malloc(sizeof(char) * 100);
     char *extension = getExtension(request->http_uri);
     getMime(extension, mime);
@@ -293,17 +292,15 @@ void serve_http(int connFd, char *rootFolder, Field *field)
         fprintf(stderr, "Failed to accept\n");
         return;
     }
-    pthread_mutex_lock(&jobs_mutex);
+    // free(rc);
+    pthread_mutex_lock(&parse_mutex);
     Request *request = parse(buf, sizeRet, connFd);
-    pthread_mutex_unlock(&jobs_mutex);
+    pthread_mutex_unlock(&parse_mutex);
     if (request == NULL) // handled malformede request
     {
         response_400(connFd, buf);
         return;
     }
-    printf("Http Method %s\n", request->http_method);
-    printf("Http Version %s\n", request->http_version);
-    printf("Http Uri %s\n", request->http_uri);
     if (!checkHTTPversion(request))
     {
         response_505(connFd, buf);
@@ -336,14 +333,9 @@ void serve_http(int connFd, char *rootFolder, Field *field)
 }
 void *do_work(void *field)
 {
-
     for (;;)
     {
         Field *info = (Field *)field;
-        // fprintf(stdout, "port is %s\n", info->port);
-
-        // fprintf(stderr, "%d\n", info->pool->status);
-
         bool success = !q.empty();
         if (success)
         {
@@ -353,7 +345,7 @@ void *do_work(void *field)
             pthread_mutex_unlock(&jobs_mutex);
             if (w == NULL)
             {
-                fprintf(stderr, "no w\n");
+                continue;
             }
             else
             {
@@ -383,9 +375,7 @@ void *do_work(void *field)
         else // there is no work return
         {
             pthread_mutex_lock(&jobs_mutex);
-            // fprintf(stderr, "lock\n");
             pthread_cond_wait(&condition_variable, &jobs_mutex);
-            // fprintf(stderr, "signal\n");
             pthread_mutex_unlock(&jobs_mutex);
         }
     }
@@ -396,6 +386,11 @@ void initThreadPool(Field *field)
     int numThreads = field->numThreads;
     thread_array = (pthread_t *)malloc(sizeof(pthread_t) * numThreads);
     if ((pthread_mutex_init(&jobs_mutex, NULL)) < 0)
+    {
+        fprintf(stderr, "Error initialising mutex\n");
+        exit(1);
+    }
+    if ((pthread_mutex_init(&parse_mutex, NULL)) < 0)
     {
         fprintf(stderr, "Error initialising mutex\n");
         exit(1);
@@ -412,10 +407,7 @@ void initThreadPool(Field *field)
             fprintf(stderr, "Error creating threads\n");
             exit(1);
         }
-        // fprintf(stdout, "Created worker %d thread with tid %d.\n", pthread_self());
     }
-    // field->pool->work_q->status = 88;
-    // return field->pool;
     return;
 }
 int main(int argc, char **argv)
@@ -469,15 +461,16 @@ int main(int argc, char **argv)
             printf("Connection from %s:%s\n", hostBuf, svcBuf);
         else
             printf("Connection from ?UNKNOWN?\n");
-        // fprintf(stdout, "status is %d\n", connFd);
         pthread_mutex_lock(&jobs_mutex);
         q.push_back(connFd);
-        showdq(q);
-        pthread_cond_signal(&condition_variable);
         pthread_mutex_unlock(&jobs_mutex);
+        pthread_cond_signal(&condition_variable);
     }
     free(field);
+    free(thread_array);
     pthread_mutex_destroy(&jobs_mutex);
+    pthread_mutex_destroy(&parse_mutex);
+    pthread_cond_destroy(&condition_variable);
 
     return 0;
 }
