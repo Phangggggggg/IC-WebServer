@@ -4,7 +4,7 @@ LIBFLAGS=-pthread
 # all src files
 SRC := $(wildcard $(SRC_DIR)/*.c)
 # all objects
-OBJ := $(OBJ_DIR)/y.tab.o $(OBJ_DIR)/lex.yy.o $(OBJ_DIR)/parse.o $(OBJ_DIR)/icws.o $(OBJ_DIR)/pcsa_net.o
+OBJ := $(OBJ_DIR)/y.tab.o $(OBJ_DIR)/lex.yy.o $(OBJ_DIR)/parse.o $(OBJ_DIR)/icws.o $(OBJ_DIR)/pcsa_net.o 
 # all binaries
 BIN := icws
 # C compiler
@@ -21,7 +21,8 @@ default: all
 all : icws 
 
 icws: $(OBJ)
-	$(CPP) $(CPPFLAGS) $^ -o $@
+	$(CPP) $(CPPFLAGS) $(LIBFLAGS) $^ -o $@
+
 
 # pcsa_net: $(OBJ)
 #  $(CC) $^ -o $@

@@ -5,6 +5,8 @@
         "unistd.h": "c",
         "parse.h": "c",
         "netdb.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "deque": "cpp",
+        "random": "cpp"
     }
 }
