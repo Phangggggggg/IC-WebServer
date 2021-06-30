@@ -49,7 +49,13 @@ typedef struct
 } Field;
 
 typedef struct sockaddr SA;
-
+void showdq(deque<int> g)
+{
+    deque<int>::iterator it;
+    for (it = g.begin(); it != g.end(); ++it)
+        cout << '\t' << *it;
+    cout << '\n';
+}
 int isPersistant(Request *request)
 {
     for (int i = 0; i < request->header_count; i++)

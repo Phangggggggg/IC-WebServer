@@ -11,9 +11,6 @@ typedef struct
     char *rio_bufptr;          /* next unread byte in internal buf */
     char rio_buf[RIO_BUFSIZE]; /* internal buffer */
 } rio_t;
-void rio_readinitb(rio_t *rp, int fd);
-static ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n);
-ssize_t rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen);
 int open_listenfd(char *port);
 int open_clientfd(char *hostname, char *port);
 ssize_t read_line(int connFd, char *usrbuf, size_t maxlen);
