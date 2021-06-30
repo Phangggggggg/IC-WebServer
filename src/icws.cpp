@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -10,8 +11,7 @@
 #include <deque>
 #include <iostream>
 #include <poll.h>
-
-#include "simple_work_queue.hpp"
+#include <sys/wait.h>
 
 extern "C"
 {
@@ -19,13 +19,15 @@ extern "C"
 #include "parse.h"
 }
 using namespace std;
-#define MAXBUF 8024
+#define MAXBUF 8192
+#define BUFSIZE 2048
 
 pthread_t *thread_array;
 pthread_mutex_t jobs_mutex;
 pthread_mutex_t parse_mutex;
 pthread_cond_t condition_variable;
 deque<int> q;
+int checkAlive = 1;
 
 static struct option long_options[] =
     {
@@ -47,13 +49,169 @@ typedef struct
 } Field;
 
 typedef struct sockaddr SA;
-void showdq(deque<int> g)
+
+int isPersistant(Request *request)
 {
-    deque<int>::iterator it;
-    for (it = g.begin(); it != g.end(); ++it)
-        cout << '\t' << *it;
-    cout << '\n';
+    for (int i = 0; i < request->header_count; i++)
+    {
+        if (!strcasecmp(request->headers[i].header_name, "Connection"))
+        {
+            if (!strcasecmp(request->headers[i].header_value, "close"))
+            {
+                return 0;
+            }
+            return 1;
+        }
+    }
+    return 1;
 }
+void fail_exit(char *msg)
+{
+    fprintf(stderr, "%s\n", msg);
+    exit(-1);
+}
+void piper(char *inferiorCmd, Request *request)
+{
+    int c2pFds[2]; /* Child to parent pipe */
+    int p2cFds[2]; /* Parent to child pipe */
+
+    if (pipe(c2pFds) < 0)
+        fail_exit("c2p pipe failed.");
+    if (pipe(p2cFds) < 0)
+        fail_exit("p2c pipe failed.");
+
+    int pid = fork();
+
+    if (pid < 0)
+        fail_exit("Fork failed.");
+    if (pid == 0)
+    { /* Child - set up the conduit & run inferior cmd */
+        /* Wire pipe's incoming to child's stdin */
+        /* First, close the unused direction. */
+        for (int i = 0; i < request->header_count; i++)
+        {
+
+            if (!strcasecmp(request->headers[i].header_name, "Content-Length"))
+            {
+                setenv("CONTENT_LENGTH", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "Content-Type"))
+            {
+                setenv("CONTENT_TYPE", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "Access-Control-Request-Method"))
+            {
+                setenv("REQUEST_METHOD", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "Accept"))
+            {
+                setenv("HTTP_ACCEPT", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "Referer"))
+            {
+                setenv("HTTP_REFERER", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "Accept-Encoding"))
+            {
+                setenv("HTTP_ACCEPT_ENCODING", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "Accept-Language"))
+            {
+                setenv("HTTP_ACCEPT_LANGUAGE", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "Accept-Charset"))
+            {
+                setenv("HTTP_ACCEPT_CHARSET", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "Host"))
+            {
+                setenv("HTTP_HOST", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "Cookie"))
+            {
+                setenv("HTTP_COOKIE", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "User-Agent"))
+            {
+                setenv("HTTP_USER_AGENT", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "Connection"))
+            {
+                setenv("HTTP_CONNECTION", request->headers[i].header_value, 1);
+            }
+            else if (!strcasecmp(request->headers[i].header_name, "Request-URI"))
+            {
+                setenv("REQUEST_URI", request->headers[i].header_value, 1);
+            }
+        }
+
+        if (close(p2cFds[1]) < 0)
+            fail_exit("failed to close p2c[1]");
+        if (p2cFds[0] != STDIN_FILENO)
+        {
+            if (dup2(p2cFds[0], STDIN_FILENO) < 0)
+                fail_exit("dup2 stdin failed.");
+            if (close(p2cFds[0]) < 0)
+                fail_exit("close p2c[0] failed.");
+        }
+
+        /* Wire child's stdout to pipe's outgoing */
+        /* But first, close the unused direction */
+        if (close(c2pFds[0]) < 0)
+            fail_exit("failed to close c2p[0]");
+        if (c2pFds[1] != STDOUT_FILENO)
+        {
+            if (dup2(c2pFds[1], STDOUT_FILENO) < 0)
+                fail_exit("dup2 stdin failed.");
+            if (close(c2pFds[1]) < 0)
+                fail_exit("close pipeFd[0] failed.");
+        }
+
+        char *inferiorArgv[] = {inferiorCmd, NULL};
+        if (execvpe(inferiorArgv[0], inferiorArgv, environ) < 0)
+            fail_exit("exec failed.");
+    }
+    else
+    { /* Parent - send a random message */
+        /* Close the write direction in parent's incoming */
+        if (close(c2pFds[1]) < 0)
+            fail_exit("failed to close c2p[1]");
+
+        /* Close the read direction in parent's outgoing */
+        if (close(p2cFds[0]) < 0)
+            fail_exit("failed to close p2c[0]");
+
+        char *message = "OMGWTFBBQ\n";
+        /* Write a message to the child - replace with write_all as necessary */
+        write(p2cFds[1], message, strlen(message));
+        /* Close this end, done writing. */
+        if (close(p2cFds[1]) < 0)
+            fail_exit("close p2c[01] failed.");
+
+        char buf[BUFSIZE + 1];
+        ssize_t numRead;
+        /* Begin reading from the child */
+        while ((numRead = read(c2pFds[0], buf, BUFSIZE)) > 0)
+        {
+            printf("Parent saw %ld bytes from child...\n", numRead);
+            buf[numRead] = '\x0'; /* Printing hack; won't work with binary data */
+            printf("-------\n");
+            printf("%s", buf);
+            printf("-------\n");
+        }
+        /* Close this end, done reading. */
+        if (close(c2pFds[0]) < 0)
+            fail_exit("close c2p[01] failed.");
+
+        /* Wait for child termination & reap */
+        int status;
+
+        if (waitpid(pid, &status, 0) < 0)
+            fail_exit("waitpid failed.");
+        printf("Child exited... parent's terminating as well.\n");
+    }
+}
+
 char *gettDateTime(void)
 {
     time_t t = time(NULL);
@@ -71,6 +229,7 @@ void response_404(int connFd, char *buffer)
             gettDateTime());
     write_all(connFd, buffer, strlen(buffer));
     write_all(connFd, msg, strlen(msg));
+    checkAlive = 0;
 }
 void response_400(int connFd, char *buffer)
 {
@@ -83,6 +242,7 @@ void response_400(int connFd, char *buffer)
             gettDateTime());
     write_all(connFd, buffer, strlen(buffer));
     write_all(connFd, msg, strlen(msg));
+    checkAlive = 0;
 }
 void response_501(int connFd, char *buffer)
 {
@@ -95,6 +255,7 @@ void response_501(int connFd, char *buffer)
             gettDateTime());
     write_all(connFd, buffer, strlen(buffer));
     write_all(connFd, msg, strlen(msg));
+    checkAlive = 0;
 }
 
 void response_505(int connFd, char *buffer)
@@ -108,6 +269,7 @@ void response_505(int connFd, char *buffer)
             gettDateTime());
     write_all(connFd, buffer, strlen(buffer));
     write_all(connFd, msg, strlen(msg));
+    checkAlive = 0;
 }
 void write_logic(int connFd, int outputFd)
 {
@@ -129,6 +291,7 @@ void write_logic(int connFd, int outputFd)
             numToWrite -= numWritten;
             writeBuf += numWritten;
         }
+        *writeBuf = '\n';
     }
     fprintf(stdout, "DEBUG: Connection closed\n");
 }
@@ -137,23 +300,33 @@ void respond_all_head(int connFd, char *uri, char *mime)
     char buf[MAXBUF];
     int uriFd = open(uri, O_RDONLY);
     char *msg = "404 Not Found\n";
-    fprintf(stdout, "uri is %d", uriFd);
+    char *con;
+    // fprintf(stdout, "uri is %d", uriFd);
     if (mime == NULL || uriFd < 0)
     {
         response_404(connFd, buf);
         return;
     }
+    if (checkAlive)
+    {
+        con = "keep-alive";
+    }
+    else
+    {
+        con = "closed";
+    }
+
     struct stat fstatbuf;
     fstat(uriFd, &fstatbuf);
     sprintf(buf,
             "HTTP/1.1 200 ok\r\n"
             "Date: %s"
             "Server: icws\r\n"
-            "Connection: close\r\n"
+            "Connection: %s\r\n"
             "Content-type: %s\r\n"
             "Content-length: %lu\r\n"
             "Last-modification: %s\r\n",
-            gettDateTime(), mime, fstatbuf.st_size, ctime(&fstatbuf.st_mtime));
+            gettDateTime(), con, mime, fstatbuf.st_size, ctime(&fstatbuf.st_mtime));
     write_all(connFd, buf, strlen(buf));
     return;
 }
@@ -163,10 +336,19 @@ void respond_all(int connFd, char *uri, char *mime)
     char buf[MAXBUF];
     int uriFd = open(uri, O_RDONLY);
     char *msg = "404 Not Found\n";
+    char *con;
     if (mime == NULL || uriFd < 0)
     {
         response_404(connFd, buf);
         return;
+    }
+    if (checkAlive)
+    {
+        con = "keep-alive";
+    }
+    else
+    {
+        con = "closed";
     }
     struct stat fstatbuf;
     fstat(uriFd, &fstatbuf);
@@ -174,13 +356,14 @@ void respond_all(int connFd, char *uri, char *mime)
             "HTTP/1.1 200 ok\r\n"
             "Date: %s"
             "Server: icws\r\n"
-            "Connection: close\r\n"
+            "Connection: %s\r\n"
             "Content-type: %s\r\n"
             "Content-length: %lu\r\n"
             "Last-modification: %s\r\n",
-            gettDateTime(), mime, fstatbuf.st_size, ctime(&fstatbuf.st_mtime));
+            gettDateTime(), con, mime, fstatbuf.st_size, ctime(&fstatbuf.st_mtime));
     write_all(connFd, buf, strlen(buf));
     write_logic(uriFd, connFd);
+    return;
 }
 
 char *getExtension(char *filename)
@@ -267,17 +450,16 @@ void responseGET(int connFd, Request *request, Field *field, char *newPath)
     }
     fprintf(stdout, "%s\n", mime);
     respond_all(connFd, newPath, mime);
-    return;
 }
 
 void serve_http(int connFd, char *rootFolder, Field *field)
 {
-    int readRet;
+
+    int readRet = 0;
     int sizeRet = 0;
     char buf[MAXBUF];
     char readBuf[MAXBUF];
-    // rio_t *rc = (rio_t *)malloc(sizeof(rio_t));
-    // rio_readinitb(rc, connFd);
+    memset(buf, 0, 8192);
     while ((readRet = read_line(connFd, readBuf, MAXBUF)) > 0)
     {
         sizeRet += readRet;
@@ -292,7 +474,6 @@ void serve_http(int connFd, char *rootFolder, Field *field)
         fprintf(stderr, "Failed to accept\n");
         return;
     }
-    // free(rc);
     pthread_mutex_lock(&parse_mutex);
     Request *request = parse(buf, sizeRet, connFd);
     pthread_mutex_unlock(&parse_mutex);
@@ -306,6 +487,9 @@ void serve_http(int connFd, char *rootFolder, Field *field)
         response_505(connFd, buf);
         return;
     }
+    pthread_mutex_lock(&parse_mutex);
+    checkAlive = isPersistant(request);
+    pthread_mutex_unlock(&parse_mutex);
     char newPath[80];
     if (request->http_uri[0] == '/')
     {
@@ -328,8 +512,8 @@ void serve_http(int connFd, char *rootFolder, Field *field)
     {
         printf("LOG: Unknown request\n");
     }
+    // memset(buf, 0, 8192);
     free(request);
-    return;
 }
 void *do_work(void *field)
 {
@@ -361,7 +545,10 @@ void *do_work(void *field)
                 }
                 else if (pFD.revents & POLLIN)
                 {
-                    serve_http(w, info->rootFolder, info);
+                    while (checkAlive)
+                    {
+                        serve_http(w, info->rootFolder, info);
+                    }
                     close(w);
                 }
                 else
@@ -445,6 +632,7 @@ int main(int argc, char **argv)
     int listenFd = open_listenfd(field->port);
     for (;;)
     {
+
         char buf[8192];
         struct sockaddr_storage clientAddr;
         socklen_t clientLen = sizeof(struct sockaddr_storage);
@@ -454,6 +642,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "Failed to accept\n");
             continue;
         }
+        checkAlive = 1;
         char hostBuf[MAXBUF], svcBuf[MAXBUF];
 
         if (getnameinfo((SA *)&clientAddr, clientLen,
