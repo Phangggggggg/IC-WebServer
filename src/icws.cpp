@@ -454,7 +454,6 @@ void responseGET(int connFd, Request *request, Field *field, char *newPath)
         respond_all(connFd, newPath, NULL);
         return;
     }
-    fprintf(stdout, "%s\n", mime);
     respond_all(connFd, newPath, mime);
 }
 
