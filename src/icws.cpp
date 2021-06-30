@@ -666,6 +666,5 @@ int main(int argc, char **argv)
     pthread_mutex_destroy(&jobs_mutex);
     pthread_mutex_destroy(&parse_mutex);
     pthread_cond_destroy(&condition_variable);
-
     return 0;
 }
