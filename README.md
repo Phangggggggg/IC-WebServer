@@ -13,3 +13,4 @@
 - https://linux.die.net/man/3/poll
 - https://linuxhint.com/use-poll-system-call-c/
 - https://www.geeksforgeeks.org/deque-cpp-stl/
+### Notes: Milestone 3 is not completed.
