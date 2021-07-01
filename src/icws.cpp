@@ -255,7 +255,7 @@ void response_501(int connFd, char *buffer)
     char *msg = "501\n";
     sprintf(buffer,
             "HTTP/1.1 501 HTTP Method Not Unimplemented\r\n"
-            "Date: %s\r\n"
+            "Date: %s"
             "Server: icws\r\n"
             "Connection: close\r\n\r\n",
             gettDateTime());
@@ -269,7 +269,7 @@ void response_505(int connFd, char *buffer)
     char *msg = "505\n";
     sprintf(buffer,
             "HTTP/1.1 505 HTTP Version Not Supported\r\n"
-            "Date: %s\r\n"
+            "Date: %s"
             "Server: icws\r\n"
             "Connection: close\r\n\r\n",
             gettDateTime());
